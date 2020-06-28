@@ -1,0 +1,261 @@
+
+PART 1
+
+Install Packages
+
+In [1]:
+import sys
+!{sys.executable} -m pip install pandas
+!{sys.executable} -m pip install beautifulsoup4
+!{sys.executable} -m pip install requests
+Requirement already satisfied: pandas in /home/jupyterlab/conda/envs/python/lib/python3.6/site-packages (1.0.4)
+Requirement already satisfied: pytz>=2017.2 in /home/jupyterlab/conda/envs/python/lib/python3.6/site-packages (from pandas) (2020.1)
+Requirement already satisfied: python-dateutil>=2.6.1 in /home/jupyterlab/conda/envs/python/lib/python3.6/site-packages (from pandas) (2.8.1)
+Requirement already satisfied: numpy>=1.13.3 in /home/jupyterlab/conda/envs/python/lib/python3.6/site-packages (from pandas) (1.18.5)
+Requirement already satisfied: six>=1.5 in /home/jupyterlab/conda/envs/python/lib/python3.6/site-packages (from python-dateutil>=2.6.1->pandas) (1.15.0)
+Requirement already satisfied: beautifulsoup4 in /home/jupyterlab/conda/envs/python/lib/python3.6/site-packages (4.9.1)
+Requirement already satisfied: soupsieve>1.2 in /home/jupyterlab/conda/envs/python/lib/python3.6/site-packages (from beautifulsoup4) (2.0.1)
+Requirement already satisfied: requests in /home/jupyterlab/conda/envs/python/lib/python3.6/site-packages (2.23.0)
+Requirement already satisfied: certifi>=2017.4.17 in /home/jupyterlab/conda/envs/python/lib/python3.6/site-packages (from requests) (2020.4.5.2)
+Requirement already satisfied: chardet<4,>=3.0.2 in /home/jupyterlab/conda/envs/python/lib/python3.6/site-packages (from requests) (3.0.4)
+Requirement already satisfied: urllib3!=1.25.0,!=1.25.1,<1.26,>=1.21.1 in /home/jupyterlab/conda/envs/python/lib/python3.6/site-packages (from requests) (1.25.9)
+Requirement already satisfied: idna<3,>=2.5 in /home/jupyterlab/conda/envs/python/lib/python3.6/site-packages (from requests) (2.9)
+In [2]:
+from bs4 import BeautifulSoup
+import requests
+import pandas as pd
+Get HTML
+
+In [7]:
+# import the library we use to open URLs
+import urllib.request
+
+# specify which URL/web page we are going to be scraping, get html text
+url ='https://en.wikipedia.org/wiki/List_of_postal_codes_of_Canada:_M'
+html_text = requests.get(url).text
+Use Soup to extract table
+
+In [18]:
+soup = BeautifulSoup(html_text)
+# use the 'find_all' function to bring back all instances of the 'table' tag in the HTML and store in 'all_tables' variable
+all_tables=soup.find_all("table")
+
+right_table=soup.find('table', class_='wikitable sortable')
+right_table
+
+#loop through the rows
+A=[]
+B=[]
+C=[]
+
+
+for row in right_table.findAll('tr'):
+    cells=row.findAll('td')
+    if len(cells)==3:
+        A.append(cells[0].find(text=True))
+        B.append(cells[1].find(text=True))
+        C.append(cells[2].find(text=True))
+Create Pandas Dataframe
+
+In [39]:
+#create dataframe and view head 
+
+df = pd.DataFrame(rows, columns=['Postal Code', 'Borough', 'Neighbourhood'])
+print (df.shape)
+df.head(10)
+(180, 3)
+Out[39]:
+Postal Code	Borough	Neighbourhood
+0	M1A	Not assigned	Not assigned
+1	M2A	Not assigned	Not assigned
+2	M3A	North York	Parkwoods
+3	M4A	North York	Victoria Village
+4	M5A	Downtown Toronto	Regent Park, Harbourfront
+5	M6A	North York	Lawrence Manor, Lawrence Heights
+6	M7A	Downtown Toronto	Queen's Park, Ontario Provincial Government
+7	M8A	Not assigned	Not assigned
+8	M9A	Etobicoke	Islington Avenue, Humber Valley Village
+9	M1B	Scarborough	Malvern, Rouge
+In [40]:
+#If a cell has a borough but a Not assigned neighborhood, then the neighborhood will be the same as the borough
+
+df['Neighbourhood'] = df.apply(
+    lambda row: 
+    row['Borough'] if row['Neighbourhood'] == 'Not assigned' 
+    else row['Neighbourhood'],
+    axis=1)
+
+print(df.shape)
+df.head(10)
+(180, 3)
+Out[40]:
+Postal Code	Borough	Neighbourhood
+0	M1A	Not assigned	Not assigned
+1	M2A	Not assigned	Not assigned
+2	M3A	North York	Parkwoods
+3	M4A	North York	Victoria Village
+4	M5A	Downtown Toronto	Regent Park, Harbourfront
+5	M6A	North York	Lawrence Manor, Lawrence Heights
+6	M7A	Downtown Toronto	Queen's Park, Ontario Provincial Government
+7	M8A	Not assigned	Not assigned
+8	M9A	Etobicoke	Islington Avenue, Humber Valley Village
+9	M1B	Scarborough	Malvern, Rouge
+In [41]:
+#ignore cells with a borough that is Not assigned
+df = df[df.Borough != 'Not assigned']
+df.reset_index(inplace=True, drop=True)
+print(df.shape)
+df.head(10)
+(103, 3)
+Out[41]:
+Postal Code	Borough	Neighbourhood
+0	M3A	North York	Parkwoods
+1	M4A	North York	Victoria Village
+2	M5A	Downtown Toronto	Regent Park, Harbourfront
+3	M6A	North York	Lawrence Manor, Lawrence Heights
+4	M7A	Downtown Toronto	Queen's Park, Ontario Provincial Government
+5	M9A	Etobicoke	Islington Avenue, Humber Valley Village
+6	M1B	Scarborough	Malvern, Rouge
+7	M3B	North York	Don Mills
+8	M4B	East York	Parkview Hill, Woodbine Gardens
+9	M5B	Downtown Toronto	Garden District, Ryerson
+In [27]:
+#More than one neighborhood can exist in one postal code area. 
+df.groupby('Postal Code')
+print(df.shape)
+df.head(10)
+(103, 3)
+Out[27]:
+Postal Code	Borough	Neighbourhood
+0	M3A	North York	Parkwoods
+1	M4A	North York	Victoria Village
+2	M5A	Downtown Toronto	Regent Park, Harbourfront
+3	M6A	North York	Lawrence Manor, Lawrence Heights
+4	M7A	Downtown Toronto	Queen's Park, Ontario Provincial Government
+5	M9A	Etobicoke	Islington Avenue, Humber Valley Village
+6	M1B	Scarborough	Malvern, Rouge
+7	M3B	North York	Don Mills
+8	M4B	East York	Parkview Hill, Woodbine Gardens
+9	M5B	Downtown Toronto	Garden District, Ryerson
+Print Shape of Data
+
+In [28]:
+df.shape
+Out[28]:
+(103, 3)
+PART 2: Geospatial Data
+
+In [32]:
+#read data
+geospatial_data= pd.read_csv('https://cocl.us/Geospatial_data')
+
+#check csv
+print(geospatial_data.shape)
+geospatial_data.head(10)
+(103, 3)
+Out[32]:
+Postal Code	Latitude	Longitude
+0	M1B	43.806686	-79.194353
+1	M1C	43.784535	-79.160497
+2	M1E	43.763573	-79.188711
+3	M1G	43.770992	-79.216917
+4	M1H	43.773136	-79.239476
+5	M1J	43.744734	-79.239476
+6	M1K	43.727929	-79.262029
+7	M1L	43.711112	-79.284577
+8	M1M	43.716316	-79.239476
+9	M1N	43.692657	-79.264848
+Merge two tables
+
+helpful link: https://www.datacamp.com/community/tutorials/joining-dataframes-pandas
+
+In [52]:
+#concat the two tables
+df_row=pd.concat([df, geospatial_data])
+print(df.shape)
+df.head(10)
+(103, 4)
+Out[52]:
+Borough	Neighbourhood	Latitude	Longitude
+Postal Code				
+M3A	North York	Parkwoods	43.753259	-79.329656
+M4A	North York	Victoria Village	43.725882	-79.315572
+M5A	Downtown Toronto	Regent Park, Harbourfront	43.654260	-79.360636
+M6A	North York	Lawrence Manor, Lawrence Heights	43.718518	-79.464763
+M7A	Downtown Toronto	Queen's Park, Ontario Provincial Government	43.662301	-79.389494
+M9A	Etobicoke	Islington Avenue, Humber Valley Village	43.667856	-79.532242
+M1B	Scarborough	Malvern, Rouge	43.806686	-79.194353
+M3B	North York	Don Mills	43.745906	-79.352188
+M4B	East York	Parkview Hill, Woodbine Gardens	43.706397	-79.309937
+M5B	Downtown Toronto	Garden District, Ryerson	43.657162	-79.378937
+In [53]:
+#current index postal code, change to 0, 1, 2..
+df.reset_index(inplace=True)
+print(df.shape)
+df.head(10)
+(103, 5)
+Out[53]:
+Postal Code	Borough	Neighbourhood	Latitude	Longitude
+0	M3A	North York	Parkwoods	43.753259	-79.329656
+1	M4A	North York	Victoria Village	43.725882	-79.315572
+2	M5A	Downtown Toronto	Regent Park, Harbourfront	43.654260	-79.360636
+3	M6A	North York	Lawrence Manor, Lawrence Heights	43.718518	-79.464763
+4	M7A	Downtown Toronto	Queen's Park, Ontario Provincial Government	43.662301	-79.389494
+5	M9A	Etobicoke	Islington Avenue, Humber Valley Village	43.667856	-79.532242
+6	M1B	Scarborough	Malvern, Rouge	43.806686	-79.194353
+7	M3B	North York	Don Mills	43.745906	-79.352188
+8	M4B	East York	Parkview Hill, Woodbine Gardens	43.706397	-79.309937
+9	M5B	Downtown Toronto	Garden District, Ryerson	43.657162	-79.378937
+Part 3: Explore the Neighbourhood
+
+In [54]:
+import json # library to handle JSON files
+
+#install geopy
+!pip install geopy
+
+#!conda install -c conda-forge geopy --yes # uncomment this line if you haven't completed the Foursquare API lab
+from geopy.geocoders import Nominatim # convert an address into latitude and longitude values
+
+import requests # library to handle requests
+from pandas.io.json import json_normalize # tranform JSON file into a pandas dataframe
+
+# Matplotlib and associated plotting modules
+import matplotlib.cm as cm
+import matplotlib.colors as colors
+
+# import k-means from clustering stage
+from sklearn.cluster import KMeans
+
+#!conda install -c conda-forge folium=0.5.0 --yes # uncomment this line if you haven't completed the Foursquare API lab
+import folium # map rendering library
+
+print('Libraries imported.')
+Requirement already satisfied: geopy in /home/jupyterlab/conda/envs/python/lib/python3.6/site-packages (2.0.0)
+Requirement already satisfied: geographiclib<2,>=1.49 in /home/jupyterlab/conda/envs/python/lib/python3.6/site-packages (from geopy) (1.50)
+Libraries imported.
+Use geopy library to get the latitude and longitude values of Toronto
+
+In [55]:
+address = 'Toronto, Canada'
+
+geolocator = Nominatim(user_agent="toronto_explorer")
+location = geolocator.geocode(address)
+latitude = location.latitude
+longitude = location.longitude
+print('The geograpical coordinate of Toronto are {}, {}.'.format(latitude, longitude))
+The geograpical coordinate of Toronto are 43.6534817, -79.3839347.
+In [58]:
+# create map of Toronto using latitude and longitude values
+map_toronto = folium.Map(location=[latitude, longitude], zoom_start=10)
+
+map_toronto
+Out[58]:
+Make this Notebook Trusted to load map: File -> Trust Notebook
+Define Foursquare Credential
+
+In [60]:
+CLIENT_ID = 'H221G3EBRJAJZNQFWCRX5YDISWKB2OPRHNMJCWYXGAV2SELL' # your Foursquare ID
+CLIENT_SECRET = 'PGSVG1CTDNL1BQL1XACAL3N3KVPCDVF43GYPT0B5EGFX0DCA' # your Foursquare Secret
+VERSION = '20200628' # Foursquare API version
+In [ ]:
